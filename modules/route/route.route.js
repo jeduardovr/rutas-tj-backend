@@ -10,4 +10,7 @@ router.route('/')
     .get(_validexpress, controller.getAll)
     .post(_validexpress, controller.create)
 
+router.route('/:id')
+    .put(_validexpress, controller.update)
+
 module.exports = router;
