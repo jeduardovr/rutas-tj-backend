@@ -104,11 +104,8 @@ const controller = {
 			const routeId = req.params.id;
 			const { from, to, type, schedule, color, description, landmarks, path, active, user } = req.body;
 
-			// ❌ Se eliminaron: Validación de ID, campos requeridos y GeoJSON LineString.
+			const objectId = new ObjectId(routeId);
 
-			const objectId = new ObjectId(routeId); // Asumimos que el ID es válido por express-validator
-
-			// Construcción del objeto de actualización
 			const updateDoc = {
 				$set: {
 					from,
@@ -128,20 +125,17 @@ const controller = {
 				}
 			};
 
-			// Ejecución de la actualización en la base de datos
 			const result = await db.collection(COLLECTION_NAME).updateOne(
 				{ _id: objectId },
 				updateDoc
 			);
 
 			if (result.matchedCount === 0) {
-				// 💡 Este mensaje de no encontrado se mantiene, ya que no es un error de validación de input, sino de estado de la base de datos.
 				return res.status(HTTP_STATUS.NOT_FOUND).json({
 					message: `Ruta con ID ${routeId} no encontrada.`
 				});
 			}
 
-			// Obtener el documento actualizado para devolverlo
 			const updatedRoute = await db.collection(COLLECTION_NAME).findOne({ _id: objectId });
 
 			res.status(HTTP_STATUS.OK).json({
@@ -155,7 +149,48 @@ const controller = {
 				error: error.message
 			});
 		}
+	},
+
+	propose: async (req, res) => {
+		try {
+			const db = mongodb.getdb(process.env.DATABASE_NAME);
+			const { from, to, type, schedule, color, description, landmarks, path, user } = req.body;
+
+			const newProposal = {
+				from,
+				to,
+				type,
+				...(schedule && { schedule }),
+				color: color || '#3b82f6',
+				description: description || '',
+				landmarks: landmarks || [],
+				path,
+				status: 'pending',
+				active: true,
+				createdAt: new Date(),
+				proposedBy: user || 'anonymous',
+				updated: {
+					user: user || '',
+					date: new Date()
+				}
+			};
+
+			const result = await db.collection('routes_to_approve').insertOne(newProposal);
+
+			res.status(HTTP_STATUS.CREATED).json({
+				message: "Propuesta de ruta enviada exitosamente para aprobación",
+				data: {
+					_id: result.insertedId,
+					...newProposal
+				}
+			});
+		} catch (error) {
+			res.status(HTTP_STATUS.INTERNAL_ERROR).json({
+				message: "Error al enviar la propuesta de ruta",
+				error: error.message
+			});
+		}
 	}
-}
+};
 
 module.exports = { controller };
