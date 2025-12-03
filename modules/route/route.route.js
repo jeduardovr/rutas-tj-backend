@@ -7,10 +7,11 @@ const { controller } = require('./route.controller');
 
 // Rutas base (/route)
 router.route('/')
-    .get(_validexpress, controller.getAll)
-    .post(_validexpress, controller.create)
+    .get(controller.getAll)
+    .post(controller.create)
 
 router.route('/:id')
-    .put(_validexpress, controller.update)
+    .get(controller.getById)
+    .put(controller.update)
 
 module.exports = router;

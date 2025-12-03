@@ -26,22 +26,59 @@ const controller = {
 		}
 	},
 
+	getById: async (req, res) => {
+		try {
+			const db = mongodb.getdb(process.env.DATABASE_NAME);
+			const routeId = req.params.id;
+
+			if (!ObjectId.isValid(routeId)) {
+				return res.status(HTTP_STATUS.BAD_REQUEST).json({
+					message: "ID de ruta inválido"
+				});
+			}
+
+			const route = await db.collection(COLLECTION_NAME).findOne({
+				_id: new ObjectId(routeId)
+			});
+
+			if (!route) {
+				return res.status(HTTP_STATUS.NOT_FOUND).json({
+					message: `Ruta con ID ${routeId} no encontrada`
+				});
+			}
+
+			res.status(HTTP_STATUS.OK).json({
+				message: "Ruta obtenida exitosamente",
+				data: route
+			});
+		} catch (error) {
+			res.status(HTTP_STATUS.INTERNAL_ERROR).json({
+				message: "Error al obtener la ruta",
+				error: error.message
+			});
+		}
+	},
+
 	create: async (req, res) => {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
-			const { name, type, color, description, landmarks, path, active } = req.body;
-
-			// ❌ Se eliminaron: Validación de campos requeridos y GeoJSON LineString.
+			const { from, to, type, schedule, color, description, landmarks, path, active } = req.body;
 
 			const newRoute = {
-				name,
+				from,
+				to,
 				type,
+				...(schedule && { schedule }),
 				color: color || '#3b82f6',
 				description: description || '',
 				landmarks: landmarks || [],
 				path,
 				active: active !== undefined ? active : true,
-				createdAt: new Date()
+				createdAt: new Date(),
+				updated: {
+					user: req.body.user || '',
+					date: new Date()
+				}
 			};
 
 			const result = await db.collection(COLLECTION_NAME).insertOne(newRoute);
@@ -65,7 +102,7 @@ const controller = {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
 			const routeId = req.params.id;
-			const { name, type, color, description, landmarks, path, active } = req.body;
+			const { from, to, type, schedule, color, description, landmarks, path, active, user } = req.body;
 
 			// ❌ Se eliminaron: Validación de ID, campos requeridos y GeoJSON LineString.
 
@@ -74,14 +111,20 @@ const controller = {
 			// Construcción del objeto de actualización
 			const updateDoc = {
 				$set: {
-					name,
+					from,
+					to,
 					type,
+					...(schedule && { schedule }),
 					color: color || '#3b82f6',
 					description: description || '',
 					landmarks: landmarks || [],
 					path,
 					...(active !== undefined && { active }),
-					updatedAt: new Date()
+					updatedAt: new Date(),
+					updated: {
+						user: user || '',
+						date: new Date()
+					}
 				}
 			};
 
