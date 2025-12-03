@@ -1,9 +1,10 @@
 const { mongodb, ObjectId } = require('../../utils/mongoConfig');
 const { HTTP_STATUS } = require('../../utils/constants');
 const CryptoJS = require("crypto-js");
+const { validateCredentials, generateAuthToken, hashPassword } = require('../../utils/auth');
 
 const COLLECTION_NAME = 'user';
-const SECRET_KEY = process.env.SECRET_KEY || 'mysecretkey';
+const SECRET_KEY = process.env.SECRET_KEY;
 
 const controller = {
     register: async (req, res) => {
@@ -52,28 +53,20 @@ const controller = {
             const db = mongodb.getdb(process.env.DATABASE_NAME);
             const { email, password } = req.body;
 
-            const user = await db.collection(COLLECTION_NAME).findOne({ email });
+            const user = await validateCredentials(email, password, db, COLLECTION_NAME);
             if (!user || !user.active) {
                 return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "Credenciales inválidas" });
             }
 
-            const hashedPassword = CryptoJS.SHA256(password).toString();
-            if (hashedPassword !== user.password) {
-                return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "Credenciales inválidas" });
-            }
-
-            const tokenData = {
-                _id: user._id,
-                email: user.email,
-                name: user.name,
-                role: user.role
-            };
-            const token = CryptoJS.AES.encrypt(JSON.stringify(tokenData), SECRET_KEY).toString();
+            const token = generateAuthToken(user);
 
             res.status(HTTP_STATUS.OK).json({
                 message: "Login exitoso",
                 token,
-                user: tokenData
+                user: {
+                    name: user.name
+
+                }
             });
         } catch (error) {
             res.status(HTTP_STATUS.INTERNAL_ERROR).json({ message: "Error al iniciar sesión", error: error.message });

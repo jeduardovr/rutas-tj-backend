@@ -19,7 +19,7 @@ module.exports = {
 
     // Configuración de autenticación
     AUTH: {
-        TOKEN_EXPIRY: "24h",
+        TOKEN_EXPIRY: "12h",
         HASH_ALGORITHM: "SHA256"
     },
 

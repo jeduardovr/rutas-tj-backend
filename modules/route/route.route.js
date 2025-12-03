@@ -1,17 +1,10 @@
 const router = require('express').Router();
 const { controller } = require('./route.controller');
+const { models } = require('./route.model');
 
-// ==========================================
-// Rutas Privadas (Requieren Token)
-// ==========================================
-
-// Rutas base (/route)
-router.route('/')
-    .get(controller.getAll)
-    .post(controller.create)
-
-router.route('/:id')
-    .get(controller.getById)
-    .put(controller.update)
+router.get('/', _validexpress, controller.getAll);
+router.post('/', _validtoken, models.create, _validexpress, controller.create);
+router.get('/:id', _validexpress, controller.getById);
+router.put('/:id', _validtoken, models.update, _validexpress, controller.update);
 
 module.exports = router;
