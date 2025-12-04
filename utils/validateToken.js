@@ -60,7 +60,7 @@ const token = {
 
             // 5. Verificación Criptográfica (Si no estaba en caché)
             // Verificamos que el token sea auténtico y no haya expirado usando la clave secreta.
-            const tokenData = await verifyJwt(tokenValue, process.env.TOKEN_KEY);
+            const tokenData = await verifyJwt(tokenValue, process.env.SECRET_KEY);
 
             // 6. Obtención de Datos (Base de Datos)
             // Si el token es válido, buscamos los datos frescos del usuario en la BD.

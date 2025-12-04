@@ -34,18 +34,24 @@ const controller = {
 
             const result = await db.collection(COLLECTION_NAME).insertOne(newUser);
 
-            const tokenData = {
-                _id: result.insertedId,
-                email: newUser.email,
-                name: newUser.name,
-                role: newUser.role
+            // Crear el usuario completo con el _id generado
+            const userWithId = {
+                ...newUser,
+                _id: result.insertedId
             };
-            const token = CryptoJS.AES.encrypt(JSON.stringify(tokenData), SECRET_KEY).toString();
+
+            // Generar token JWT (igual que en login)
+            const token = generateAuthToken(userWithId);
 
             res.status(HTTP_STATUS.CREATED).json({
                 message: "Usuario registrado exitosamente",
                 token,
-                user: tokenData
+                user: {
+                    _id: result.insertedId,
+                    email: newUser.email,
+                    name: newUser.name,
+                    role: newUser.role
+                }
             });
         } catch (error) {
             res.status(HTTP_STATUS.INTERNAL_ERROR).json({ message: "Error al registrar usuario", error: error.message });
@@ -71,13 +77,14 @@ const controller = {
 
             // 3. Validar contraseña
             const user = await validateCredentials(email, password, db, COLLECTION_NAME);
+            console.log(user);
 
             if (!user) {
                 return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "Credenciales inválidas" });
             }
 
             if (!user.active) {
-                return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "Usuario inactivo" });
+                return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "No tiene permisos para ingresar." });
             }
 
             const token = generateAuthToken(user);
@@ -109,7 +116,8 @@ const controller = {
             const googleData = await googleRes.json();
             const { email, name, sub: googleId } = googleData;
 
-            let user = await db.collection(COLLECTION_NAME).findOne({ email });
+            const user = await validateCredentials(email, '', db, COLLECTION_NAME, true);
+            console.log(user);
 
             // Lógica para MODO LOGIN
             if (mode === 'login') {
@@ -158,24 +166,26 @@ const controller = {
             }
 
             if (!user.active) {
-                return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "Usuario inactivo" });
+                return res.status(HTTP_STATUS.UNAUTHORIZED).json({ message: "No tiene permisos para ingresar." });
             }
 
-            const tokenData = {
-                _id: user._id,
-                email: user.email,
-                name: user.name,
-                role: user.role
-            };
-            const token = CryptoJS.AES.encrypt(JSON.stringify(tokenData), SECRET_KEY).toString();
+            // Generar token JWT (igual que en login normal)
+            const token = generateAuthToken(user);
 
             res.status(HTTP_STATUS.OK).json({
                 message: `Google ${mode === 'register' ? 'Registro' : 'Login'} exitoso`,
                 token,
-                user: tokenData
+                user: {
+                    _id: user._id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role
+                }
             });
 
         } catch (error) {
+            console.log(error);
+
             res.status(HTTP_STATUS.INTERNAL_ERROR).json({ message: "Error en Google Login", error: error.message });
         }
     }

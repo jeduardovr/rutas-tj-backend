@@ -190,6 +190,145 @@ const controller = {
 				error: error.message
 			});
 		}
+	},
+
+	getPendingProposals: async (req, res) => {
+		try {
+			const db = mongodb.getdb(process.env.DATABASE_NAME);
+			const { page, limit, skip } = getPaginationParams(req, PAGINATION_LIMITS.AMENITY);
+
+			const proposals = await db.collection('routes_to_approve')
+				.find({ status: 'pending' })
+				.sort({ createdAt: -1 })
+				.skip(skip)
+				.limit(limit)
+				.toArray();
+
+			const total = await db.collection('routes_to_approve').countDocuments({ status: 'pending' });
+			const response = buildPaginatedResponse(proposals, page, limit, total);
+
+			res.status(HTTP_STATUS.OK).json(response);
+		} catch (error) {
+			res.status(HTTP_STATUS.INTERNAL_ERROR).json({
+				message: "Error al obtener propuestas pendientes",
+				error: error.message
+			});
+		}
+	},
+
+	approveProposal: async (req, res) => {
+		try {
+			const db = mongodb.getdb(process.env.DATABASE_NAME);
+			const proposalId = req.params.id;
+
+			if (!ObjectId.isValid(proposalId)) {
+				return res.status(HTTP_STATUS.BAD_REQUEST).json({
+					message: "ID de propuesta inválido"
+				});
+			}
+
+			const proposal = await db.collection('routes_to_approve').findOne({
+				_id: new ObjectId(proposalId)
+			});
+
+			if (!proposal) {
+				return res.status(HTTP_STATUS.NOT_FOUND).json({
+					message: `Propuesta con ID ${proposalId} no encontrada`
+				});
+			}
+
+			if (proposal.status !== 'pending') {
+				return res.status(HTTP_STATUS.BAD_REQUEST).json({
+					message: `Esta propuesta ya fue ${proposal.status === 'approved' ? 'aprobada' : 'rechazada'}`
+				});
+			}
+
+			// Crear la ruta en la colección principal
+			const { _id, status, proposedBy, ...routeData } = proposal;
+			routeData.active = true;
+			routeData.approvedAt = new Date();
+			routeData.approvedBy = req.body.approvedBy || 'admin';
+
+			const result = await db.collection(COLLECTION_NAME).insertOne(routeData);
+
+			// Actualizar el estado de la propuesta
+			await db.collection('routes_to_approve').updateOne(
+				{ _id: new ObjectId(proposalId) },
+				{
+					$set: {
+						status: 'approved',
+						approvedAt: new Date(),
+						approvedBy: req.body.approvedBy || 'admin',
+						routeId: result.insertedId
+					}
+				}
+			);
+
+			res.status(HTTP_STATUS.OK).json({
+				message: "Propuesta aprobada exitosamente",
+				data: {
+					_id: result.insertedId,
+					...routeData
+				}
+			});
+		} catch (error) {
+			res.status(HTTP_STATUS.INTERNAL_ERROR).json({
+				message: "Error al aprobar la propuesta",
+				error: error.message
+			});
+		}
+	},
+
+	rejectProposal: async (req, res) => {
+		try {
+			const db = mongodb.getdb(process.env.DATABASE_NAME);
+			const proposalId = req.params.id;
+			const { reason } = req.body;
+
+			if (!ObjectId.isValid(proposalId)) {
+				return res.status(HTTP_STATUS.BAD_REQUEST).json({
+					message: "ID de propuesta inválido"
+				});
+			}
+
+			const proposal = await db.collection('routes_to_approve').findOne({
+				_id: new ObjectId(proposalId)
+			});
+
+			if (!proposal) {
+				return res.status(HTTP_STATUS.NOT_FOUND).json({
+					message: `Propuesta con ID ${proposalId} no encontrada`
+				});
+			}
+
+			if (proposal.status !== 'pending') {
+				return res.status(HTTP_STATUS.BAD_REQUEST).json({
+					message: `Esta propuesta ya fue ${proposal.status === 'approved' ? 'aprobada' : 'rechazada'}`
+				});
+			}
+
+			// Actualizar el estado de la propuesta
+			await db.collection('routes_to_approve').updateOne(
+				{ _id: new ObjectId(proposalId) },
+				{
+					$set: {
+						status: 'rejected',
+						rejectedAt: new Date(),
+						rejectedBy: req.body.rejectedBy || 'admin',
+						rejectionReason: reason || 'No especificado'
+					}
+				}
+			);
+
+			res.status(HTTP_STATUS.OK).json({
+				message: "Propuesta rechazada exitosamente"
+			});
+		} catch (error) {
+			res.status(HTTP_STATUS.INTERNAL_ERROR).json({
+				message: "Error al rechazar la propuesta",
+				error: error.message
+			});
+		}
 	}
 };
 

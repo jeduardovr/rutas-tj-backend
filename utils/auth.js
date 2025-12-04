@@ -14,7 +14,51 @@ const { AUTH } = require('../utils/constants');
  * @returns {Promise<Object>} Usuario encontrado
  * @throws {Error} Si las credenciales son inválidas
  */
-const validateCredentials = async (email, password, db, collectionName) => {
+const validateCredentials = async (email, password = '', db, collectionName, isGoogle = false) => {
+    const user = await db.collection(collectionName).aggregate([
+        {
+            $match: {
+                email
+            }
+        },
+        {
+            $lookup: {
+                from: 'roles',
+                localField: 'roleId',
+                foreignField: '_id',
+                as: 'role'
+            }
+        },
+        {
+            $unwind: '$role'
+        },
+        {
+            $project: {
+                _id: 1,
+                name: 1,
+                email: 1,
+                active: 1,
+                role: { name: 1, routes: 1 },
+            }
+        }
+    ]).next();
+
+    if (!user) {
+        throw new Error('USER_DOESNT_EXIST');
+    }
+
+    if (!isGoogle) {
+        const passwordHash = CryptoJS.SHA256(String(password)).toString();
+
+        if (user.password !== passwordHash) {
+            throw new Error('INVALID_CREDENTIALS');
+        }
+    }
+
+    return user;
+};
+
+const validateGoogleCredentials = async (email, password, db, collectionName) => {
     const user = await db.collection(collectionName).aggregate([
         {
             $match: {
@@ -50,9 +94,12 @@ const validateCredentials = async (email, password, db, collectionName) => {
  * @returns {string} Token JWT
  */
 const generateAuthToken = (user) => {
+    // Manejar tanto roleId (ObjectId) como role (objeto con _id)
+    const roleId = user.roleId || (user.role && user.role._id) || user.role;
+
     const tokenData = {
         user: user._id,
-        role: user.roleId
+        role: roleId
     };
 
     return jwt.sign(tokenData, process.env.SECRET_KEY, {
