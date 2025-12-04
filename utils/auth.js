@@ -15,7 +15,21 @@ const { AUTH } = require('../utils/constants');
  * @throws {Error} Si las credenciales son inválidas
  */
 const validateCredentials = async (email, password, db, collectionName) => {
-    const user = await db.collection(collectionName).findOne({ email });
+    const user = await db.collection(collectionName).aggregate([
+        {
+            $match: {
+                email
+            }
+        },
+        {
+            $lookup: {
+                from: 'roles',
+                localField: 'roleId',
+                foreignField: '_id',
+                as: 'role'
+            }
+        }
+    ]);
 
     if (!user) {
         throw new Error('INVALID_CREDENTIALS');
