@@ -3,6 +3,7 @@ const { getPaginationParams, getActiveFilter, buildPaginatedResponse } = require
 const { PAGINATION_LIMITS, HTTP_STATUS } = require('../../utils/constants');
 
 const COLLECTION_NAME = 'route';
+const COLLECTION_NAME_TO_APPROVE = 'routes_to_approve';
 
 const controller = {
 	getAll: async (req, res) => {
@@ -172,7 +173,7 @@ const controller = {
 				}
 			};
 
-			const result = await db.collection('routes_to_approve').insertOne(newProposal);
+			const result = await db.collection(COLLECTION_NAME_TO_APPROVE).insertOne(newProposal);
 
 			res.status(HTTP_STATUS.CREATED).json({
 				message: "Propuesta de ruta enviada exitosamente para aprobación",
@@ -194,14 +195,14 @@ const controller = {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
 			const { page, limit, skip } = getPaginationParams(req, PAGINATION_LIMITS.PENDING_PROPOSAL);
 
-			const proposals = await db.collection('routes_to_approve')
+			const proposals = await db.collection(COLLECTION_NAME_TO_APPROVE)
 				.find({ status: 'pending' })
 				.sort({ createdAt: -1 })
 				.skip(skip)
 				.limit(limit)
 				.toArray();
 
-			const total = await db.collection('routes_to_approve').countDocuments({ status: 'pending' });
+			const total = await db.collection(COLLECTION_NAME_TO_APPROVE).countDocuments({ status: 'pending' });
 			const response = buildPaginatedResponse(proposals, page, limit, total);
 
 			res.status(HTTP_STATUS.OK).json(response);
@@ -225,7 +226,7 @@ const controller = {
 				});
 			}
 
-			const proposal = await db.collection('routes_to_approve').findOne({
+			const proposal = await db.collection(COLLECTION_NAME_TO_APPROVE).findOne({
 				_id: id
 			});
 
@@ -248,7 +249,7 @@ const controller = {
 			const result = await db.collection(COLLECTION_NAME).insertOne(routeData);
 
 			// Actualizar el estado de la propuesta
-			await db.collection('routes_to_approve').updateOne(
+			await db.collection(COLLECTION_NAME_TO_APPROVE).updateOne(
 				{ _id: id },
 				{
 					$set: {
@@ -290,7 +291,7 @@ const controller = {
 				});
 			}
 
-			const proposal = await db.collection('routes_to_approve').findOne({
+			const proposal = await db.collection(COLLECTION_NAME_TO_APPROVE).findOne({
 				_id: id
 			});
 
@@ -307,7 +308,7 @@ const controller = {
 			}
 
 			// Actualizar el estado de la propuesta
-			await db.collection('routes_to_approve').updateOne(
+			await db.collection(COLLECTION_NAME_TO_APPROVE).updateOne(
 				{ _id: id },
 				{
 					$set: {
@@ -327,6 +328,57 @@ const controller = {
 		} catch (error) {
 			res.status(HTTP_STATUS.INTERNAL_ERROR).json({
 				message: "Error al rechazar la propuesta",
+				error: error.message
+			});
+		}
+	},
+
+	updateProposal: async (req, res) => {
+		try {
+			const db = mongodb.getdb(process.env.DATABASE_NAME);
+			const { _id: userId } = req.user;
+			const { id } = req.params;
+			const { from, to, type, schedule, color, description, landmarks, path, currentDate } = req.body;
+			if (!id) {
+				return res.status(HTTP_STATUS.BAD_REQUEST).json({
+					message: "ID de propuesta inválido"
+				});
+			}
+			const updateDoc = {
+				$set: {
+					from,
+					to,
+					type,
+					...(schedule && { schedule }),
+					color: color || '#3b82f6',
+					description: description || '',
+					landmarks: landmarks || [],
+					path,
+					updated: {
+						user: userId,
+						date: currentDate
+					}
+				}
+			};
+			const result = await db.collection(COLLECTION_NAME_TO_APPROVE).updateOne(
+				{ _id: id },
+				updateDoc
+			);
+			if (result.matchedCount === 0) {
+				return res.status(HTTP_STATUS.NOT_FOUND).json({
+					message: `Propuesta no encontrada.`
+				});
+			}
+			const updatedProposal = await db.collection(COLLECTION_NAME_TO_APPROVE).findOne({
+				_id: id
+			});
+			res.status(HTTP_STATUS.OK).json({
+				message: "Propuesta actualizada exitosamente",
+				data: updatedProposal
+			});
+		} catch (error) {
+			res.status(HTTP_STATUS.INTERNAL_ERROR).json({
+				message: "Error al actualizar la propuesta",
 				error: error.message
 			});
 		}
