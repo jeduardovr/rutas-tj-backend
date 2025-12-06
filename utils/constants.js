@@ -8,7 +8,8 @@ module.exports = {
         USER: 10,
         PERSON: 20,
         ROLE: 15,
-        AMENITY: 5
+        AMENITY: 5,
+        PENDING_PROPOSAL: 10
     },
 
     // Configuración de caché

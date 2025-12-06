@@ -62,7 +62,8 @@ const controller = {
 	create: async (req, res) => {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
-			const { from, to, type, schedule, color, description, landmarks, path, active } = req.body;
+			const { _id } = req.user;
+			const { from, to, type, schedule, color, description, landmarks, path, active, currentDate } = req.body;
 
 			const newRoute = {
 				from,
@@ -74,10 +75,9 @@ const controller = {
 				landmarks: landmarks || [],
 				path,
 				active: active !== undefined ? active : true,
-				createdAt: new Date(),
-				updated: {
-					user: req.body.user || '',
-					date: new Date()
+				created: {
+					user: _id,
+					date: currentDate
 				}
 			};
 
@@ -101,10 +101,9 @@ const controller = {
 	update: async (req, res) => {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
-			const routeId = req.params.id;
-			const { from, to, type, schedule, color, description, landmarks, path, active, user } = req.body;
-
-			const objectId = new ObjectId(routeId);
+			const { _id } = req.user;
+			const { id } = req.params;
+			const { from, to, type, schedule, color, description, landmarks, path, active, currentDate } = req.body;
 
 			const updateDoc = {
 				$set: {
@@ -117,26 +116,25 @@ const controller = {
 					landmarks: landmarks || [],
 					path,
 					...(active !== undefined && { active }),
-					updatedAt: new Date(),
 					updated: {
-						user: user || '',
-						date: new Date()
+						user: _id,
+						date: currentDate
 					}
 				}
 			};
 
 			const result = await db.collection(COLLECTION_NAME).updateOne(
-				{ _id: objectId },
+				{ _id: id },
 				updateDoc
 			);
 
 			if (result.matchedCount === 0) {
 				return res.status(HTTP_STATUS.NOT_FOUND).json({
-					message: `Ruta con ID ${routeId} no encontrada.`
+					message: `Ruta no encontrada.`
 				});
 			}
 
-			const updatedRoute = await db.collection(COLLECTION_NAME).findOne({ _id: objectId });
+			const updatedRoute = await db.collection(COLLECTION_NAME).findOne({ _id: id });
 
 			res.status(HTTP_STATUS.OK).json({
 				message: "Ruta actualizada exitosamente",
@@ -154,7 +152,8 @@ const controller = {
 	propose: async (req, res) => {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
-			const { from, to, type, schedule, color, description, landmarks, path, user } = req.body;
+			const { _id } = req.user;
+			const { from, to, type, schedule, color, description, landmarks, path, currentDate } = req.body;
 
 			const newProposal = {
 				from,
@@ -167,11 +166,9 @@ const controller = {
 				path,
 				status: 'pending',
 				active: true,
-				createdAt: new Date(),
-				proposedBy: user || 'anonymous',
-				updated: {
-					user: user || '',
-					date: new Date()
+				created: {
+					user: _id,
+					date: currentDate
 				}
 			};
 
@@ -195,7 +192,7 @@ const controller = {
 	getPendingProposals: async (req, res) => {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
-			const { page, limit, skip } = getPaginationParams(req, PAGINATION_LIMITS.AMENITY);
+			const { page, limit, skip } = getPaginationParams(req, PAGINATION_LIMITS.PENDING_PROPOSAL);
 
 			const proposals = await db.collection('routes_to_approve')
 				.find({ status: 'pending' })
@@ -219,21 +216,22 @@ const controller = {
 	approveProposal: async (req, res) => {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
-			const proposalId = req.params.id;
+			const { _id: userId } = req.user;
+			const { id } = req.params;
 
-			if (!ObjectId.isValid(proposalId)) {
+			if (!id) {
 				return res.status(HTTP_STATUS.BAD_REQUEST).json({
 					message: "ID de propuesta inválido"
 				});
 			}
 
 			const proposal = await db.collection('routes_to_approve').findOne({
-				_id: new ObjectId(proposalId)
+				_id: id
 			});
 
 			if (!proposal) {
 				return res.status(HTTP_STATUS.NOT_FOUND).json({
-					message: `Propuesta con ID ${proposalId} no encontrada`
+					message: `Propuesta no encontrada`
 				});
 			}
 
@@ -246,19 +244,19 @@ const controller = {
 			// Crear la ruta en la colección principal
 			const { _id, status, proposedBy, ...routeData } = proposal;
 			routeData.active = true;
-			routeData.approvedAt = new Date();
-			routeData.approvedBy = req.body.approvedBy || 'admin';
 
 			const result = await db.collection(COLLECTION_NAME).insertOne(routeData);
 
 			// Actualizar el estado de la propuesta
 			await db.collection('routes_to_approve').updateOne(
-				{ _id: new ObjectId(proposalId) },
+				{ _id: id },
 				{
 					$set: {
 						status: 'approved',
-						approvedAt: new Date(),
-						approvedBy: req.body.approvedBy || 'admin',
+						approved: {
+							user: userId,
+							date: currentDate
+						},
 						routeId: result.insertedId
 					}
 				}
@@ -282,22 +280,23 @@ const controller = {
 	rejectProposal: async (req, res) => {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
-			const proposalId = req.params.id;
-			const { reason } = req.body;
+			const { _id: userId } = req.user;
+			const { id } = req.params;
+			const { reason, currentDate } = req.body;
 
-			if (!ObjectId.isValid(proposalId)) {
+			if (!id) {
 				return res.status(HTTP_STATUS.BAD_REQUEST).json({
 					message: "ID de propuesta inválido"
 				});
 			}
 
 			const proposal = await db.collection('routes_to_approve').findOne({
-				_id: new ObjectId(proposalId)
+				_id: id
 			});
 
 			if (!proposal) {
 				return res.status(HTTP_STATUS.NOT_FOUND).json({
-					message: `Propuesta con ID ${proposalId} no encontrada`
+					message: `Propuesta no encontrada`
 				});
 			}
 
@@ -309,12 +308,14 @@ const controller = {
 
 			// Actualizar el estado de la propuesta
 			await db.collection('routes_to_approve').updateOne(
-				{ _id: new ObjectId(proposalId) },
+				{ _id: id },
 				{
 					$set: {
 						status: 'rejected',
-						rejectedAt: new Date(),
-						rejectedBy: req.body.rejectedBy || 'admin',
+						rejected: {
+							user: userId,
+							date: currentDate
+						},
 						rejectionReason: reason || 'No especificado'
 					}
 				}

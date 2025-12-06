@@ -188,6 +188,31 @@ const controller = {
 
             res.status(HTTP_STATUS.INTERNAL_ERROR).json({ message: "Error en Google Login", error: error.message });
         }
+    },
+
+    verifySession: async (req, res) => {
+        try {
+            // El middleware token.valid ya validó el token y puso el usuario en req.user
+            // Si llegamos aquí, el token es válido y el usuario existe y está activo (si validateToken valida active status)
+            // validateToken usa functions.dataToken, verifiquemos si valida active status allí. 
+            // Si validateToken solo decodifica, entonces req.user puede ser solo el payload o el usuario de DB.
+            // Mirando validateToken.js: req.user = dataUser; donde dataUser = await functions.dataToken(tokenData.user);
+
+            // Asumimos que dataToken devuelve el usuario completo.
+            const user = req.user;
+
+            res.status(HTTP_STATUS.OK).json({
+                valid: true,
+                user: {
+                    _id: user._id,
+                    email: user.email,
+                    name: user.name,
+                    role: user.role
+                }
+            });
+        } catch (error) {
+            res.status(HTTP_STATUS.INTERNAL_ERROR).json({ message: "Error verificando sesión", error: error.message });
+        }
     }
 };
 

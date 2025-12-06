@@ -1,3 +1,4 @@
+const moment = require('moment-timezone');
 const expressCustom = {
     isGeoJSONLineString: (pathValue, { req }) => {
         if (!pathValue) {
@@ -9,7 +10,10 @@ const expressCustom = {
         }
 
         return true;
-    }
+    },
+    currentDate: (value, { req }) => {
+        return moment.tz("America/Tijuana").toDate()
+    },
 };
 
 module.exports = { expressCustom };
