@@ -127,4 +127,29 @@ describe.skip('Route Module Integration Tests', () => {
             });
         });
     });
+
+    describe('Route Delete Dependencies Unit Tests', () => {
+        // Limpiamos el caché de módulos para asegurar una importación limpia en el futuro
+        beforeEach(() => {
+            jest.resetModules();
+        });
+
+        it('should ensure the "delete" method exists in route.controller', () => {
+            // Importa el controlador
+            const { controller } = require('../modules/route/route.controller');
+
+            // Verifica que la función controller.delete esté definida y sea una función
+            expect(controller.delete).toBeDefined();
+            expect(typeof controller.delete).toBe('function');
+        });
+
+        it('should ensure the "delete" method exists in route.model (middleware)', () => {
+            // Importa el modelo
+            const { models } = require('../modules/route/route.model');
+
+            // Verifica que la función models.delete esté definida y sea una función
+            expect(models.delete).toBeDefined();
+            expect(typeof models.delete).toBe('function');
+        });
+    });
 });

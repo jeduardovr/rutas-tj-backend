@@ -382,6 +382,48 @@ const controller = {
 				error: error.message
 			});
 		}
+	},
+
+	delete: async (req, res) => {
+		try {
+			const db = mongodb.getdb(process.env.DATABASE_NAME);
+			const { _id: userId } = req.user;
+			// El ID viene en el cuerpo de la solicitud (req.body) ya como ObjectId
+			// gracias al middleware models.delete en route.model.js.
+			const { id, currentDate } = req.body;
+
+			const updateDoc = {
+				$set: {
+					// Lógica de Soft Delete: Desactiva la ruta
+					active: false,
+					updated: {
+						user: userId,
+						date: currentDate
+					}
+				}
+			};
+
+			const result = await db.collection(COLLECTION_NAME).updateOne(
+				{ _id: id },
+				updateDoc
+			);
+
+			if (result.matchedCount === 0) {
+				return res.status(HTTP_STATUS.NOT_FOUND).json({
+					message: `Ruta no encontrada para desactivar.`
+				});
+			}
+
+			res.status(HTTP_STATUS.OK).json({
+				message: "Ruta desactivada exitosamente (Soft Delete)"
+			});
+
+		} catch (error) {
+			res.status(HTTP_STATUS.INTERNAL_ERROR).json({
+				message: "Error al desactivar la ruta",
+				error: error.message
+			});
+		}
 	}
 };
 
