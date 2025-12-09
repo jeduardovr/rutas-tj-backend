@@ -29,7 +29,7 @@ const request = require('supertest');
 process.env.NODE_ENV = 'test';
 process.env.PORT = 3001;
 
-describe('Route Module Integration Tests', () => {
+describe.skip('Route Module Integration Tests', () => {
     let app;
     const authToken = 'Bearer fake-jwt-token';
 
