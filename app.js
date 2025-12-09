@@ -29,3 +29,6 @@ SERVER_APP.listen(process.env.PORT, async (err) => {
 
     await mongodb.connect();
 });
+
+// Export app for testing
+module.exports = app;

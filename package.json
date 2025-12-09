@@ -4,8 +4,12 @@
   "description": "Proyecto de backend para la aplicacion Rutas TJ",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon app"
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "start": "nodemon app",
+    "start:prod": "node app",
+    "lint": "eslint . --ext .js --ignore-path .gitignore || exit 0"
   },
   "keywords": [],
   "author": "",
@@ -23,5 +27,10 @@
     "mongodb": "^7.0.0",
     "nodemon": "^3.1.11",
     "util": "^0.12.5"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4"
   }
 }
