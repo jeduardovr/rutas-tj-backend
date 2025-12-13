@@ -5,10 +5,7 @@
 module.exports = {
     // Límites de paginación por módulo
     PAGINATION_LIMITS: {
-        USER: 10,
-        PERSON: 20,
-        ROLE: 15,
-        AMENITY: 5,
+        ROUTES: 5,
         PENDING_PROPOSAL: 10
     },
 

@@ -9,7 +9,7 @@ const controller = {
 	getAll: async (req, res) => {
 		try {
 			const db = mongodb.getdb(process.env.DATABASE_NAME);
-			const { page, limit, skip } = getPaginationParams(req, PAGINATION_LIMITS.AMENITY);
+			const { page, limit, skip } = getPaginationParams(req, PAGINATION_LIMITS.ROUTES);
 			const filter = getActiveFilter(req);
 
 			const routes = await db.collection(COLLECTION_NAME)

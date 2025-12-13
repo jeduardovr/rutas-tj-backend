@@ -4,9 +4,7 @@
   "description": "Proyecto de backend para la aplicacion Rutas TJ",
   "main": "app.js",
   "scripts": {
-    "test": "jest --coverage",
-    "test:watch": "jest --watch",
-    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "test": "node quality-check.js",
     "start": "nodemon app",
     "start:prod": "node app",
     "lint": "eslint . --ext .js --ignore-path .gitignore || exit 0"
