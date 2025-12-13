@@ -207,11 +207,30 @@ const controller = {
                     _id: user._id,
                     email: user.email,
                     name: user.name,
-                    role: user.role
+                    role: user.role,
+                    badges: user.badges || []
                 }
             });
         } catch (error) {
             res.status(HTTP_STATUS.INTERNAL_ERROR).json({ message: "Error verificando sesión", error: error.message });
+        }
+    },
+
+    donate: async (req, res) => {
+        try {
+            const db = mongodb.getdb(process.env.DATABASE_NAME);
+            const user = req.user;
+
+            // Simular validación de pago
+
+            await db.collection(COLLECTION_NAME).updateOne(
+                { _id: new ObjectId(user._id) },
+                { $addToSet: { badges: 'sponsor' } }
+            );
+
+            res.status(HTTP_STATUS.OK).json({ message: "Donación registrada. ¡Gracias por ser un patrocinador!" });
+        } catch (error) {
+            res.status(HTTP_STATUS.INTERNAL_ERROR).json({ message: "Error al registrar donación", error: error.message });
         }
     }
 };

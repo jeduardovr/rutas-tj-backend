@@ -61,12 +61,12 @@ const models = {
     ],
 
     approveProposal: [
-        body('id').notEmpty().custom(value => ObjectId.isValid(value)).bail().customSanitizer(value => new ObjectId(value)),
+        param('id').notEmpty().custom(value => ObjectId.isValid(value)).bail().customSanitizer(value => new ObjectId(value)),
         body('currentDate').customSanitizer(expressCustom.currentDate)
     ],
 
     rejectProposal: [
-        body('id').notEmpty().custom(value => ObjectId.isValid(value)).bail().customSanitizer(value => new ObjectId(value)),
+        param('id').notEmpty().custom(value => ObjectId.isValid(value)).bail().customSanitizer(value => new ObjectId(value)),
         body('currentDate').customSanitizer(expressCustom.currentDate)
     ],
 

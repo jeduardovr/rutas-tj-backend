@@ -248,6 +248,14 @@ const controller = {
 
 			const result = await db.collection(COLLECTION_NAME).insertOne(routeData);
 
+			// Award contributor badge
+			if (proposal.created && proposal.created.user) {
+				await db.collection('users').updateOne(
+					{ _id: new ObjectId(proposal.created.user) },
+					{ $addToSet: { badges: 'contributor' } }
+				);
+			}
+
 			// Actualizar el estado de la propuesta
 			await db.collection(COLLECTION_NAME_TO_APPROVE).updateOne(
 				{ _id: id },
